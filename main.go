@@ -11,10 +11,11 @@ import (
 	"sync"
 )
 
-var path = flag.String("path", ".", "the path to scan")
+var basepath = flag.String("path", ".", "the path to scan")
+var exclude = flag.String("exclude", ".git", "path prefixes to exclude from the scan")
 
 func processFile(path string) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Join(*basepath, path))
 	if err != nil {
 		log.Printf("error reading %s: %s", path, err)
 	}
@@ -42,22 +43,35 @@ func main() {
 	// Read through all the paths in the channel
 	// and process them to look for matching terms
 	go func() {
-		for path := range ch {
-			go func(path string) {
-				processFile(path)
+		for fpath := range ch {
+			go func(fpath string) {
+				processFile(fpath)
 				wg.Done()
-			}(path)
+			}(fpath)
 		}
 	}()
 
+	prefixes := strings.Split(*exclude, ",")
+
 	// Walk the filesystem and place each path into the channel
-	filepath.Walk(*path, func(path string, info os.FileInfo, err error) error {
+	filepath.Walk(*basepath, func(path string, info os.FileInfo, err error) error {
 		if info == nil || info.IsDir() {
 			return nil
 		}
 
+		relpath, err := filepath.Rel(*basepath, path)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(relpath, prefix) {
+				return nil
+			}
+		}
+
 		wg.Add(1)
-		ch <- path
+		ch <- relpath
 		return nil
 	})
 
