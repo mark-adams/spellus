@@ -26,7 +26,7 @@ func processFile(path string) {
 		line := scanner.Text()
 		for k, v := range dictionary {
 			if strings.Contains(line, k) {
-				fmt.Printf("%s:%d: '%s' should be spelled '%s'\n", path, lineno, k, v)
+				fmt.Printf("%s:%d: %s: '%s' should be spelled '%s'\n", path, lineno, v.ID, k, v.CorrectSpelling)
 			}
 		}
 	}
